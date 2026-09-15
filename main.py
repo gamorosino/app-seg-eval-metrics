@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """brainlife.io entrypoint: binary-mask evaluation metrics.
 
-Reads a "moving/testing" mask and a ground-truth mask, each of which may be
-supplied as either an `ome-zarr` store or a `parc` (volumetric parcellation)
-NIfTI, binarizes both against `foreground_labels`, and writes the metrics
-from `evaluate_binary_mask` to metrics/metrics.json.
+Reads a "moving/testing" mask and a ground-truth mask and writes the metrics
+from `evaluate_binary_mask` to metrics/metrics.json, after binarizing both
+against `foreground_labels`. The ground-truth mask may be an `ome-zarr` store
+or a `parc` (volumetric parcellation) NIfTI; the moving/testing mask may
+additionally be a 3D TIFF stack.
 """
 from __future__ import annotations
 
@@ -13,6 +14,7 @@ import os
 
 import nibabel as nib
 import numpy as np
+import tifffile
 import zarr
 
 from metrics import evaluate_binary_mask
@@ -47,17 +49,27 @@ def _load_ome_zarr(path: str, level: str, labels: list[int]) -> np.ndarray:
     return _binarize(data, labels)
 
 
-def _load_mask(config: dict, prefix: str, level: str, labels: list[int]) -> np.ndarray:
+def _load_tif(path: str, labels: list[int]) -> np.ndarray:
+    data = np.asarray(tifffile.imread(path))
+    return _binarize(data, labels)
+
+
+def _load_mask(
+    config: dict, prefix: str, level: str, labels: list[int], allow_tif: bool = False
+) -> np.ndarray:
     zarr_path = config.get(f"{prefix}_ome_zarr")
     parc_path = config.get(f"{prefix}_parc")
+    tif_path = config.get(f"{prefix}_tif") if allow_tif else None
     if zarr_path:
         return _load_ome_zarr(zarr_path, level, labels)
     if parc_path:
         return _load_parc(parc_path, labels)
-    raise ValueError(
-        f"no input provided for '{prefix}': set either "
-        f"'{prefix}_ome_zarr' or '{prefix}_parc' in config.json"
+    if tif_path:
+        return _load_tif(tif_path, labels)
+    options = f"'{prefix}_ome_zarr', '{prefix}_parc'" + (
+        f", or '{prefix}_tif'" if allow_tif else ""
     )
+    raise ValueError(f"no input provided for '{prefix}': set one of {options} in config.json")
 
 
 def main() -> None:
@@ -67,7 +79,7 @@ def main() -> None:
     labels = _parse_labels(str(config.get("foreground_labels", "")))
     zarr_level = str(config.get("zarr_level", "0"))
 
-    prediction = _load_mask(config, "moving", zarr_level, labels)
+    prediction = _load_mask(config, "moving", zarr_level, labels, allow_tif=True)
     target = _load_mask(config, "gt", zarr_level, labels)
 
     result = evaluate_binary_mask(

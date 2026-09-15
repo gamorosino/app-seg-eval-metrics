@@ -1,14 +1,14 @@
 # seg-eval-metrics
 
-Voxel, target-informed neighbor-corrected, topology, and connected-component metrics comparing a moving/testing 3D binary mask against a ground-truth mask. Either mask may be an ome-zarr store or a parc (volumetric parcellation) NIfTI.
+Voxel, target-informed neighbor-corrected, topology, and connected-component metrics comparing a moving/testing 3D binary mask against a ground-truth mask. The ground-truth mask may be an ome-zarr store or a parc (volumetric parcellation) NIfTI; the moving/testing mask may additionally be a 3D TIFF stack.
 
 ## Inputs
 
-Provide exactly one of each pair -- whichever datatype the moving/testing
-mask and the ground-truth mask actually are:
+Provide exactly one input per mask -- whichever datatype it actually is:
 
 - `moving_ome_zarr` (neuro/ome-zarr) -- optional
 - `moving_parc` (neuro/parcellation/volume) -- optional
+- `moving_tif` (neuro/tiff-volume) -- optional
 - `gt_ome_zarr` (neuro/ome-zarr) -- optional
 - `gt_parc` (neuro/parcellation/volume) -- optional
 
