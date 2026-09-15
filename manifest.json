@@ -1,0 +1,99 @@
+{
+  "name": "seg-eval-metrics",
+  "github": "gamorosino/app-seg-eval-metrics",
+  "github_branch": "main",
+  "desc": "Voxel, target-informed neighbor-corrected, topology, and connected-component metrics comparing a moving/testing 3D binary mask against a ground-truth mask. Either mask may be an ome-zarr store or a parc (volumetric parcellation) NIfTI.",
+  "config": {
+    "moving_ome_zarr": { "type": "input", "file_id": "zarr", "input_id": "moving_ome_zarr" },
+    "moving_parc": { "type": "input", "file_id": "parc", "input_id": "moving_parc" },
+    "gt_ome_zarr": { "type": "input", "file_id": "zarr", "input_id": "gt_ome_zarr" },
+    "gt_parc": { "type": "input", "file_id": "parc", "input_id": "gt_parc" },
+    "foreground_labels": {
+      "id": "foreground_labels",
+      "type": "string",
+      "placeholder": "",
+      "advanced": false,
+      "desc": "Comma-separated integer label values treated as foreground when binarizing a parc/ome-zarr input. Empty means every nonzero voxel is foreground.",
+      "default": ""
+    },
+    "zarr_level": {
+      "id": "zarr_level",
+      "type": "string",
+      "placeholder": "0",
+      "advanced": true,
+      "desc": "Internal ome-zarr array/group path (multiscale resolution level) to read.",
+      "default": "0"
+    },
+    "neighbor_rounds": {
+      "id": "neighbor_rounds",
+      "type": "number",
+      "placeholder": "2",
+      "advanced": true,
+      "desc": "Number of face-neighbor dilation rounds used for the target-informed tolerance correction.",
+      "default": 2
+    },
+    "include_topology": {
+      "id": "include_topology",
+      "type": "boolean",
+      "placeholder": "",
+      "advanced": false,
+      "desc": "Include Betti number / Euler characteristic comparison.",
+      "default": true
+    },
+    "include_components": {
+      "id": "include_components",
+      "type": "boolean",
+      "placeholder": "",
+      "advanced": false,
+      "desc": "Include connected-component overlap metrics (splits/merges/matched IoU).",
+      "default": true
+    }
+  },
+  "inputs": [
+    {
+      "id": "moving_ome_zarr",
+      "desc": "Moving/testing mask as an ome-zarr store (alternative to moving_parc).",
+      "datatype": "neuro/ome-zarr",
+      "datatype_tags": [],
+      "optional": true,
+      "multi": false,
+      "advanced": false
+    },
+    {
+      "id": "moving_parc",
+      "desc": "Moving/testing mask as a volumetric parcellation NIfTI (alternative to moving_ome_zarr).",
+      "datatype": "neuro/parcellation/volume",
+      "datatype_tags": [],
+      "optional": true,
+      "multi": false,
+      "advanced": false
+    },
+    {
+      "id": "gt_ome_zarr",
+      "desc": "Ground-truth mask as an ome-zarr store (alternative to gt_parc).",
+      "datatype": "neuro/ome-zarr",
+      "datatype_tags": [],
+      "optional": true,
+      "multi": false,
+      "advanced": false
+    },
+    {
+      "id": "gt_parc",
+      "desc": "Ground-truth mask as a volumetric parcellation NIfTI (alternative to gt_ome_zarr).",
+      "datatype": "neuro/parcellation/volume",
+      "datatype_tags": [],
+      "optional": true,
+      "multi": false,
+      "advanced": false
+    }
+  ],
+  "outputs": [
+    {
+      "id": "metrics",
+      "desc": "Voxel, neighbor-corrected, topology, and component evaluation metrics as JSON.",
+      "datatype": "neuro/seg-eval-metrics",
+      "datatype_tags": [],
+      "archive": true
+    }
+  ]
+}
