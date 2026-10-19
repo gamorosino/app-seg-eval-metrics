@@ -1,9 +1,11 @@
 {
   "moving_ome_zarr": "moving/data.ome.zarr",
   "moving_parc": "moving_parc.nii.gz",
+  "moving_mask": "moving_mask.nii.gz",
   "moving_tif": "moving_volume.tif",
   "gt_ome_zarr": "gt/data.ome.zarr",
   "gt_parc": "gt_parc.nii.gz",
+  "gt_mask": "gt_mask.nii.gz",
   "foreground_labels": "",
   "zarr_level": "0",
   "neighbor_rounds": 2,

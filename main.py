@@ -3,9 +3,9 @@
 
 Reads a "moving/testing" mask and a ground-truth mask and writes the metrics
 from `evaluate_binary_mask` to metrics/metrics.json, after binarizing both
-against `foreground_labels`. The ground-truth mask may be an `ome-zarr` store
-or a `parc` (volumetric parcellation) NIfTI; the moving/testing mask may
-additionally be a 3D TIFF stack.
+against `foreground_labels`. The ground-truth mask may be an `ome-zarr` store,
+a `parc` (volumetric parcellation) NIfTI, or a NIfTI binary `mask`; the
+moving/testing mask may additionally be a 3D TIFF stack.
 """
 from __future__ import annotations
 
@@ -59,14 +59,17 @@ def _load_mask(
 ) -> np.ndarray:
     zarr_path = config.get(f"{prefix}_ome_zarr")
     parc_path = config.get(f"{prefix}_parc")
+    mask_path = config.get(f"{prefix}_mask")
     tif_path = config.get(f"{prefix}_tif") if allow_tif else None
     if zarr_path:
         return _load_ome_zarr(zarr_path, level, labels)
     if parc_path:
         return _load_parc(parc_path, labels)
+    if mask_path:
+        return _load_parc(mask_path, labels)
     if tif_path:
         return _load_tif(tif_path, labels)
-    options = f"'{prefix}_ome_zarr', '{prefix}_parc'" + (
+    options = f"'{prefix}_ome_zarr', '{prefix}_parc', '{prefix}_mask'" + (
         f", or '{prefix}_tif'" if allow_tif else ""
     )
     raise ValueError(f"no input provided for '{prefix}': set one of {options} in config.json")
