@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
+import urllib.request
 
 import nibabel as nib
 import numpy as np
@@ -37,20 +39,32 @@ def _binarize(data: np.ndarray, labels: list[int]) -> np.ndarray:
     return np.isin(data, labels)
 
 
+def _resolve_path(path: str) -> str:
+    """Download remote URLs to a temp file; return local paths unchanged."""
+    # brainlife may pass the URL with a single slash (https:/...) after path normalization
+    normalized = path if "://" in path else path.replace(":/", "://", 1)
+    if normalized.startswith(("http://", "https://")):
+        suffix = os.path.splitext(path)[-1] or ".nii.gz"
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+        urllib.request.urlretrieve(normalized, tmp.name)
+        return tmp.name
+    return path
+
+
 def _load_parc(path: str, labels: list[int]) -> np.ndarray:
-    data = np.asarray(nib.load(path).get_fdata())
+    data = np.asarray(nib.load(_resolve_path(path)).get_fdata())
     return _binarize(data, labels)
 
 
 def _load_ome_zarr(path: str, level: str, labels: list[int]) -> np.ndarray:
-    group = zarr.open(path, mode="r")
+    group = zarr.open(_resolve_path(path), mode="r")
     array = group[level] if hasattr(group, "__getitem__") and level in group else group
     data = np.asarray(array)
     return _binarize(data, labels)
 
 
 def _load_tif(path: str, labels: list[int]) -> np.ndarray:
-    data = np.asarray(tifffile.imread(path))
+    data = np.asarray(tifffile.imread(_resolve_path(path)))
     return _binarize(data, labels)
 
 
