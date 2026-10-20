@@ -9,11 +9,16 @@ moving/testing mask may additionally be a 3D TIFF stack.
 """
 from __future__ import annotations
 
+import base64
+import io
 import json
 import os
 import tempfile
 import urllib.request
 
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import nibabel as nib
 import numpy as np
 import tifffile
@@ -24,6 +29,12 @@ from metrics import evaluate_binary_mask
 CONFIG_PATH = "config.json"
 OUTPUT_DIR = "metrics"
 OUTPUT_PATH = os.path.join(OUTPUT_DIR, "metrics.json")
+PRODUCT_PATH = "product.json"
+
+_TP_COLOR = np.array([0, 200, 80], dtype=np.uint8)    # green
+_FP_COLOR = np.array([255, 200, 0], dtype=np.uint8)   # yellow
+_FN_COLOR = np.array([220, 60, 60], dtype=np.uint8)   # red
+_GT_COLOR = np.array([40, 120, 255], dtype=np.uint8)  # blue
 
 
 def _parse_labels(raw: str) -> list[int]:
@@ -89,6 +100,58 @@ def _load_mask(
     raise ValueError(f"no input provided for '{prefix}': set one of {options} in config.json")
 
 
+def _mask_to_rgb(mask: np.ndarray, color: np.ndarray) -> np.ndarray:
+    rgb = np.zeros((*mask.shape, 3), dtype=np.uint8)
+    rgb[mask.astype(bool)] = color
+    return rgb
+
+
+def _overlay_rgb(pred: np.ndarray, target: np.ndarray) -> np.ndarray:
+    rgb = np.zeros((*pred.shape, 3), dtype=np.uint8)
+    rgb[pred & target] = _TP_COLOR
+    rgb[pred & ~target] = _FP_COLOR
+    rgb[~pred & target] = _FN_COLOR
+    return rgb
+
+
+def _fig_to_b64(fig: "plt.Figure") -> str:
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=120, bbox_inches="tight")
+    buf.seek(0)
+    return base64.b64encode(buf.read()).decode()
+
+
+def _make_qc_images(prediction: np.ndarray, target: np.ndarray) -> list[dict]:
+    pred_b = prediction.astype(bool)
+    gt_b = target.astype(bool)
+    mid = [s // 2 for s in pred_b.shape]
+    axes_info = [
+        ("axial",    (mid[0], slice(None), slice(None))),
+        ("coronal",  (slice(None), mid[1], slice(None))),
+        ("sagittal", (slice(None), slice(None), mid[2])),
+    ]
+    col_titles = ["Ground truth", "Prediction", "TP / FP / FN"]
+    entries = []
+    for axis_name, idx in axes_info:
+        gt_sl   = gt_b[idx]
+        pred_sl = pred_b[idx]
+        panels = [
+            _mask_to_rgb(gt_sl, _GT_COLOR),
+            _mask_to_rgb(pred_sl, _TP_COLOR),
+            _overlay_rgb(pred_sl, gt_sl),
+        ]
+        fig, axs = plt.subplots(1, 3, figsize=(12, 4))
+        for ax, panel, title in zip(axs, panels, col_titles):
+            ax.imshow(panel, interpolation="nearest")
+            ax.set_title(title, fontsize=11)
+            ax.axis("off")
+        fig.suptitle(f"Mid-slice — {axis_name}", fontsize=13)
+        fig.tight_layout()
+        entries.append({"type": "image/png", "name": f"qc_{axis_name}", "base64": _fig_to_b64(fig)})
+        plt.close(fig)
+    return entries
+
+
 def main() -> None:
     with open(CONFIG_PATH) as f:
         config = json.load(f)
@@ -110,6 +173,10 @@ def main() -> None:
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     with open(OUTPUT_PATH, "w") as f:
         json.dump(result, f, indent=2)
+
+    qc_images = _make_qc_images(prediction, target)
+    with open(PRODUCT_PATH, "w") as f:
+        json.dump({"brainlife": qc_images}, f)
 
 
 if __name__ == "__main__":
