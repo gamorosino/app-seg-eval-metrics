@@ -1,38 +1,110 @@
-# seg-eval-metrics
+# CONNECTS Validation Engine
 
-Voxel, target-informed neighbor-corrected, topology, and connected-component metrics comparing a moving/testing 3D binary mask against a ground-truth mask. The ground-truth mask may be an ome-zarr store or a parc (volumetric parcellation) NIfTI; the moving/testing mask may additionally be a 3D TIFF stack.
+`app-seg-eval-metrics`
 
-## Inputs
+Voxel, target-informed neighbor-corrected, topology, and connected-component metrics comparing a **moving/testing** 3D binary mask against a **ground-truth** mask.
 
-Provide exactly one input per mask -- whichever datatype it actually is:
+---
 
-- `moving_ome_zarr` (neuro/ome-zarr) -- optional
-- `moving_parc` (neuro/parcellation/volume) -- optional
-- `moving_tif` (neuro/tiff-volume) -- optional
-- `gt_ome_zarr` (neuro/ome-zarr) -- optional
-- `gt_parc` (neuro/parcellation/volume) -- optional
+# Author
 
-Both masks are binarized against `foreground_labels` (nonzero == foreground
-when empty) and must resolve to arrays of the same shape.
+**Gabriele Amorosino** ([gabriele.amorosino@utexas.edu](mailto:gabriele.amorosino@utexas.edu))
 
-## Outputs
+---
 
-- `metrics` (neuro/seg-eval-metrics) -- Voxel, neighbor-corrected, topology, and component evaluation metrics as JSON.
+# Overview
 
-## Usage
+The app binarizes both masks against `foreground_labels` (every nonzero voxel when empty) and computes a comprehensive set of segmentation evaluation metrics:
 
-Locally (outside brainlife): copy `config.json.example` to `config.json`,
-fill in real file paths, then run `./main` from this directory. `main` pulls
-its own container (`singularity exec docker://...`) -- no local install of
-the underlying tool needed, only Singularity itself.
+| Metric group            | Description                                                              |
+| ----------------------- | ------------------------------------------------------------------------ |
+| Voxel overlap           | Dice, IoU, precision, recall, F1 and related overlap scores              |
+| Neighbor-corrected      | Target-informed tolerance correction via face-neighbor dilation          |
+| Topology                | Betti numbers and Euler characteristic comparison (optional)             |
+| Connected components    | Split/merge counts and matched-component IoU (optional)                  |
 
-Entrypoint: `main.py`
+Both masks are binarized to the same shape before evaluation. Remote URLs are downloaded automatically before loading.
 
-## Authors
+---
 
-- Gabriele Amorosino <ga24643@eid.utexas.edu>
+# Inputs
 
-## License
+Provide exactly **one** input per mask — whichever datatype it actually is:
+
+| Config key       | Datatype                      | Description                                        |
+| ---------------- | ----------------------------- | -------------------------------------------------- |
+| `moving_ome_zarr`| `neuro/ome-zarr`              | Moving mask as an ome-zarr store                   |
+| `moving_parc`    | `neuro/parcellation/volume`   | Moving mask as a volumetric parcellation NIfTI     |
+| `moving_mask`    | `neuro/mask`                  | Moving mask as a NIfTI binary mask                 |
+| `moving_tif`     | `neuro/tiff-volume`           | Moving mask as a 3D TIFF stack                     |
+| `gt_ome_zarr`    | `neuro/ome-zarr`              | Ground-truth mask as an ome-zarr store             |
+| `gt_parc`        | `neuro/parcellation/volume`   | Ground-truth mask as a volumetric parcellation NIfTI|
+| `gt_mask`        | `neuro/mask`                  | Ground-truth mask as a NIfTI binary mask           |
+
+All inputs are optional in the schema — the app raises a clear error if neither side has a valid input.
+
+---
+
+# Outputs
+
+| Output    | Datatype                | Description                                      |
+| --------- | ----------------------- | ------------------------------------------------ |
+| `metrics` | `neuro/seg-eval-metrics`| Evaluation metrics as JSON (`metrics/metrics.json`) |
+
+QC mid-slice comparison figures (axial, coronal, sagittal) are written to `figures/` and assembled into `product.json` for the brainlife.io viewer.
+
+---
+
+# Configuration parameters
+
+| Parameter            | Type    | Default | Description                                                                                   |
+| -------------------- | ------- | ------- | --------------------------------------------------------------------------------------------- |
+| `foreground_labels`  | string  | `""`    | Comma-separated integer labels treated as foreground when binarizing. Empty = all nonzero.    |
+| `zarr_level`         | string  | `"0"`   | Internal ome-zarr resolution level to read (multiscale path).                                 |
+| `neighbor_rounds`    | number  | `2`     | Face-neighbor dilation rounds for the target-informed tolerance correction.                   |
+| `include_topology`   | boolean | `true`  | Include Betti number / Euler characteristic comparison.                                       |
+| `include_components` | boolean | `true`  | Include connected-component overlap metrics (splits, merges, matched IoU).                    |
+
+---
+
+# Running the app
+
+## Brainlife
+
+Run through the Brainlife web UI or submit programmatically via `faber-app-run` / `faber-app-pipeline`.
+
+---
+
+## Running locally
+
+Clone the repository and copy the example config:
+
+```bash
+git clone https://github.com/gamorosino/app-seg-eval-metrics.git
+cd app-seg-eval-metrics
+cp config.json.example config.json
+```
+
+Edit `config.json` with real file paths, then:
+
+```bash
+chmod +x main
+./main
+```
+
+`main` pulls its own container (`singularity exec docker://gamorosino/app-seg-eval-metrics:0.2`) — no local Python install needed, only Singularity.
+
+---
+
+# Container
+
+```
+docker://gamorosino/app-seg-eval-metrics:0.2
+```
+
+---
+
+# License
 
 MIT, see `LICENSE`, except `metrics.py`, which is vendored verbatim from
 [lincbrain/axonsynth](https://github.com/lincbrain/axonsynth/blob/main/paper_analysis/metrics.py)
