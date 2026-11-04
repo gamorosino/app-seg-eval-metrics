@@ -9,8 +9,6 @@ moving/testing mask may additionally be a 3D TIFF stack.
 """
 from __future__ import annotations
 
-import base64
-import io
 import json
 import os
 import tempfile
@@ -29,7 +27,7 @@ from metrics import evaluate_binary_mask
 CONFIG_PATH = "config.json"
 OUTPUT_DIR = "metrics"
 OUTPUT_PATH = os.path.join(OUTPUT_DIR, "metrics.json")
-PRODUCT_PATH = "product.json"
+FIGURES_DIR = "figures"
 
 _TP_COLOR = np.array([0, 200, 80], dtype=np.uint8)    # green
 _FP_COLOR = np.array([255, 200, 0], dtype=np.uint8)   # yellow
@@ -114,14 +112,8 @@ def _overlay_rgb(pred: np.ndarray, target: np.ndarray) -> np.ndarray:
     return rgb
 
 
-def _fig_to_b64(fig: "plt.Figure") -> str:
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=120, bbox_inches="tight")
-    buf.seek(0)
-    return base64.b64encode(buf.read()).decode()
-
-
-def _make_qc_images(prediction: np.ndarray, target: np.ndarray) -> list[dict]:
+def _save_qc_images(prediction: np.ndarray, target: np.ndarray, figures_dir: str) -> None:
+    os.makedirs(figures_dir, exist_ok=True)
     pred_b = prediction.astype(bool)
     gt_b = target.astype(bool)
     mid = [s // 2 for s in pred_b.shape]
@@ -131,7 +123,6 @@ def _make_qc_images(prediction: np.ndarray, target: np.ndarray) -> list[dict]:
         ("sagittal", (slice(None), slice(None), mid[2])),
     ]
     col_titles = ["Ground truth", "Prediction", "TP / FP / FN"]
-    entries = []
     for axis_name, idx in axes_info:
         gt_sl   = gt_b[idx]
         pred_sl = pred_b[idx]
@@ -147,9 +138,8 @@ def _make_qc_images(prediction: np.ndarray, target: np.ndarray) -> list[dict]:
             ax.axis("off")
         fig.suptitle(f"Mid-slice — {axis_name}", fontsize=13)
         fig.tight_layout()
-        entries.append({"type": "image/png", "name": f"qc_{axis_name}", "base64": _fig_to_b64(fig)})
+        fig.savefig(os.path.join(figures_dir, f"qc_{axis_name}.png"), dpi=120, bbox_inches="tight")
         plt.close(fig)
-    return entries
 
 
 def main() -> None:
@@ -174,9 +164,7 @@ def main() -> None:
     with open(OUTPUT_PATH, "w") as f:
         json.dump(result, f, indent=2)
 
-    qc_images = _make_qc_images(prediction, target)
-    with open(PRODUCT_PATH, "w") as f:
-        json.dump({"brainlife": qc_images}, f)
+    _save_qc_images(prediction, target, FIGURES_DIR)
 
 
 if __name__ == "__main__":

@@ -17,4 +17,9 @@ export SINGULARITYENV_LANG=C.UTF-8
 singularity exec -e docker://gamorosino/app-seg-eval-metrics:0.2 python3 main.py
 
 [ -z "$(ls -A metrics 2>/dev/null)" ] && echo "no output produced" && exit 1
+
+echo "Generating product.json ..."
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NO_CONTAINER="${NO_CONTAINER:-0}" bash "${SCRIPT_DIR}/generate_product_json.sh" --compress "./figures" "./product.json"
+
 exit 0
