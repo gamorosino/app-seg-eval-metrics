@@ -21,9 +21,6 @@ when empty) and must resolve to arrays of the same shape.
 
 ## Usage
 
-Brainlife.io: run via `braise-app-run`/`braise-app-pipeline` (once registered
-with `braise-app-create`), or the web UI.
-
 Locally (outside brainlife): copy `config.json.example` to `config.json`,
 fill in real file paths, then run `./main` from this directory. `main` pulls
 its own container (`singularity exec docker://...`) -- no local install of
