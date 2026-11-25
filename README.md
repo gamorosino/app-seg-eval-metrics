@@ -1,4 +1,16 @@
-# CONNECTS Validation Engine
+<h1 align="center">CONNECTS Validation Engine</h1>
+
+<p align="center">
+  Evaluates a 3D segmentation against a ground-truth mask, computing voxel overlap (Dice, IoU, precision, recall), neighbour-tolerant, topology (Betti numbers, Euler characteristic) and connected-component metrics as JSON with QC figures.
+</p>
+
+<p align="center">
+  <a href="https://github.com/brainlife/abcd-spec"><img src="https://img.shields.io/badge/ABCD_Spec-v1.1-green.svg" alt="ABCD Spec v1.1"></a>
+  <a href="https://doi.org/10.25663/brainlife.app.973"><img src="https://img.shields.io/badge/Brainlife-brainlife.app.973-blue.svg" alt="Run on brainlife.io"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-see_LICENSE-lightgrey.svg" alt="License"></a>
+</p>
+
+## At a glance
 
 <!-- brainlife-app:begin (generated from the App manifest; edit the manifest, not this block) -->
 
@@ -8,13 +20,13 @@ Accepts each mask as an OME-Zarr store, a volumetric parcellation, a NIfTI mask 
 
 | | |
 |---|---|
-| 📥 **Inputs** | `neuro/ome-zarr` (optional) ×2 · `neuro/parcellation/volume` (optional) ×2 · `neuro/mask` (optional) ×2 · `neuro/tiff-volume` (optional) |
-| 📤 **Outputs** | `neuro/seg-eval-metrics` |
-| 🐳 **Container** | `gamorosino/app-seg-eval-metrics:0.3.0` |
-| ⚙️ **Resources** | 4 GB memory · 1 h walltime |
-| 🔗 **Run it** | [doi.org/10.25663/brainlife.app.973](https://doi.org/10.25663/brainlife.app.973) |
+| **Inputs** | `neuro/ome-zarr` (optional) ×2 · `neuro/parcellation/volume` (optional) ×2 · `neuro/mask` (optional) ×2 · `neuro/tiff-volume` (optional) |
+| **Outputs** | `neuro/seg-eval-metrics` |
+| **Container** | `gamorosino/app-seg-eval-metrics:0.3.0` |
+| **Resources** | 4 GB memory · 1 h walltime |
+| **Run it** | [doi.org/10.25663/brainlife.app.973](https://doi.org/10.25663/brainlife.app.973) |
 
-#### 📥 Inputs
+#### Inputs
 
 | Input | Datatype | Required | Description |
 |---|---|---|---|
@@ -26,14 +38,14 @@ Accepts each mask as an OME-Zarr store, a volumetric parcellation, a NIfTI mask 
 | `gt_parc` | `neuro/parcellation/volume` | no | Ground-truth mask as a volumetric parcellation NIfTI (alternative to gt_ome_zarr/gt_mask). |
 | `gt_mask` | `neuro/mask` | no | Ground-truth mask as a NIfTI binary mask (alternative to gt_ome_zarr/gt_parc). |
 
-#### 📤 Outputs
+#### Outputs
 
 | Output | Datatype | Description |
 |---|---|---|
 | `metrics` | `neuro/seg-eval-metrics` | Voxel, neighbor-corrected, topology, and component evaluation metrics as JSON. |
 
 <details>
-<summary><b>⚙️ Parameters</b> (5)</summary>
+<summary><b>Parameters</b> (5)</summary>
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -47,62 +59,39 @@ Accepts each mask as an OME-Zarr store, a volumetric parcellation, a NIfTI mask 
 
 <!-- brainlife-app:end -->
 
-`app-seg-eval-metrics`
+## Running the App
 
-Voxel, target-informed neighbor-corrected, topology, and connected-component metrics comparing a **moving/testing** 3D binary mask against a **ground-truth** mask.
+### On brainlife.io
 
----
+Open the App at [doi.org/10.25663/brainlife.app.973](https://doi.org/10.25663/brainlife.app.973), choose `neuro/ome-zarr`, `neuro/parcellation/volume`, `neuro/mask`, `neuro/tiff-volume`, `neuro/ome-zarr`, `neuro/parcellation/volume`, `neuro/mask` from your project, set the parameters and press **Execute**. The results are saved to your project as `neuro/seg-eval-metrics`.
 
-# Author
+### Locally
 
-**Gabriele Amorosino** ([gabriele.amorosino@utexas.edu](mailto:gabriele.amorosino@utexas.edu))
+You need [Singularity/Apptainer](https://apptainer.org/) (the App runs in `gamorosino/app-seg-eval-metrics:0.3.0`), [`jq`](https://jqlang.github.io/jq/).
 
----
+1. Clone this repository.
+2. Create `config.json` with the paths to your inputs and the parameters:
 
-# Overview
+   ```json
+   {
+       "moving_ome_zarr": "/path/to/moving_ome_zarr/moving_ome_zarr",
+       "moving_parc": "/path/to/moving_parc/moving_parc",
+       "moving_mask": "/path/to/moving_mask/moving_mask",
+       "moving_tif": "/path/to/moving_tif/moving_tif",
+       "gt_ome_zarr": "/path/to/gt_ome_zarr/gt_ome_zarr",
+       "gt_parc": "/path/to/gt_parc/gt_parc",
+       "gt_mask": "/path/to/gt_mask/gt_mask",
+       "foreground_labels": "",
+       "zarr_level": "0",
+       "neighbor_rounds": 2,
+       "include_topology": true,
+       "include_components": true
+   }
+   ```
 
-The app binarizes both masks against `foreground_labels` (every nonzero voxel when empty) and computes a comprehensive set of segmentation evaluation metrics:
+3. Run `./main`.
 
-| Metric group            | Description                                                              |
-| ----------------------- | ------------------------------------------------------------------------ |
-| Voxel overlap           | Dice, IoU, precision, recall, F1 and related overlap scores              |
-| Neighbor-corrected      | Target-informed tolerance correction via face-neighbor dilation          |
-| Topology                | Betti numbers and Euler characteristic comparison (optional)             |
-| Connected components    | Split/merge counts and matched-component IoU (optional)                  |
-
-Both masks are binarized to the same shape before evaluation. Remote URLs are downloaded automatically before loading.
-
----
-
-# Inputs
-
-Provide exactly **one** input per mask — whichever datatype it actually is:
-
-| Config key       | Datatype                      | Description                                        |
-| ---------------- | ----------------------------- | -------------------------------------------------- |
-| `moving_ome_zarr`| `neuro/ome-zarr`              | Moving mask as an ome-zarr store                   |
-| `moving_parc`    | `neuro/parcellation/volume`   | Moving mask as a volumetric parcellation NIfTI     |
-| `moving_mask`    | `neuro/mask`                  | Moving mask as a NIfTI binary mask                 |
-| `moving_tif`     | `neuro/tiff-volume`           | Moving mask as a 3D TIFF stack                     |
-| `gt_ome_zarr`    | `neuro/ome-zarr`              | Ground-truth mask as an ome-zarr store             |
-| `gt_parc`        | `neuro/parcellation/volume`   | Ground-truth mask as a volumetric parcellation NIfTI|
-| `gt_mask`        | `neuro/mask`                  | Ground-truth mask as a NIfTI binary mask           |
-
-All inputs are optional in the schema — the app raises a clear error if neither side has a valid input.
-
----
-
-# Outputs
-
-| Output    | Datatype                | Description                                      |
-| --------- | ----------------------- | ------------------------------------------------ |
-| `metrics` | `neuro/seg-eval-metrics`| Evaluation metrics as JSON (`metrics/metrics.json`) |
-
-QC mid-slice comparison figures (axial, coronal, sagittal) are written to `figures/` and assembled into `product.json` for the brainlife.io viewer.
-
----
-
-# Configuration parameters
+## Configuration parameters
 
 | Parameter            | Type    | Default | Description                                                                                   |
 | -------------------- | ------- | ------- | --------------------------------------------------------------------------------------------- |
@@ -114,36 +103,7 @@ QC mid-slice comparison figures (axial, coronal, sagittal) are written to `figur
 
 ---
 
-# Running the app
-
-## Brainlife
-
-Run through the Brainlife web UI or submit programmatically via `faber-app-run` / `faber-app-pipeline`.
-
----
-
-## Running locally
-
-Clone the repository and copy the example config:
-
-```bash
-git clone https://github.com/gamorosino/app-seg-eval-metrics.git
-cd app-seg-eval-metrics
-cp config.json.example config.json
-```
-
-Edit `config.json` with real file paths, then:
-
-```bash
-chmod +x main
-./main
-```
-
-`main` pulls its own container (`singularity exec docker://gamorosino/app-seg-eval-metrics:0.2`) — no local Python install needed, only Singularity.
-
----
-
-# Container
+## Container
 
 ```
 docker://gamorosino/app-seg-eval-metrics:0.2
@@ -151,9 +111,20 @@ docker://gamorosino/app-seg-eval-metrics:0.2
 
 ---
 
-# License
+## Citing
 
-MIT, see `LICENSE`, except `metrics.py`, which is vendored verbatim from
-[lincbrain/axonsynth](https://github.com/lincbrain/axonsynth/blob/main/paper_analysis/metrics.py)
-with the maintainer's permission. That upstream repo has no LICENSE file of
-its own; see the header of `metrics.py` for details.
+If you use this App, please cite it, the software it builds on and brainlife.io:
+
+- CONNECTS Validation Engine. brainlife.io App. [doi:10.25663/brainlife.app.973](https://doi.org/10.25663/brainlife.app.973)
+- Hayashi S, Caron BA, Heinsfeld AS, et al. brainlife.io: a decentralized and open-source cloud platform to support neuroscience research. *Nature Methods* 21:809–813 (2024). [doi:10.1038/s41592-024-02237-2](https://doi.org/10.1038/s41592-024-02237-2)
+- Avesani P, McPherson B, Hayashi S, et al. The open diffusion data derivatives, brain data upcycling via integrated publishing of derivatives and reproducible open cloud services. *Scientific Data* 6:69 (2019). [doi:10.1038/s41597-019-0073-y](https://doi.org/10.1038/s41597-019-0073-y)
+
+## Authors
+
+**Gabriele Amorosino**
+
+---
+
+## License
+
+See [LICENSE](LICENSE).
